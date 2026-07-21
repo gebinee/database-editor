@@ -28,8 +28,6 @@
     "active": true,
     "targets": [
       "nsis",
-      "deb",
-      "rpm",
       "appimage",
       "dmg",
       "app"
@@ -49,16 +47,6 @@
         "installMode": "both",
         "installerIcon": "icons/icon.ico",
         "installerHooks": "scripts/nsis-hooks.nsh"
-      }
-    },
-    "linux": {
-      "deb": {
-        "preRemoveScript": "scripts/linux-prerm.sh",
-        "postRemoveScript": "scripts/linux-postrm.sh"
-      },
-      "rpm": {
-        "preRemoveScript": "scripts/linux-prerm.sh",
-        "postRemoveScript": "scripts/linux-postrm.sh"
       }
     }
   },
