@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "checkJs": false,
+    "allowSyntheticDefaultImports": true,
+    "jsx": "preserve",
+    "types": []
+  },
+  "include": [
+    "src/**/*",
+    "auto-imports.d.ts",
+    "components.d.ts"
+  ],
+  "exclude": ["node_modules", "dist", "src-tauri"]
+}

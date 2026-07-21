@@ -1,17 +1,25 @@
 import { defineConfig } from "vite";
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import vue from "@vitejs/plugin-vue";
 import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
 
-// https://vite.dev/config/
 export default defineConfig(() => ({
-  plugins: [vue()],
-
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent Vite from obscuring rust errors
+  plugins: [
+    vue(),
+    AutoImport({
+      imports: ["vue"],
+      resolvers: [ElementPlusResolver()],
+      dts: "auto-imports.d.ts",
+    }),
+    Components({
+      resolvers: [ElementPlusResolver()],
+      dts: "components.d.ts",
+    })
+  ],
   clearScreen: false,
-  // 2. tauri expects a fixed port, fail if that port is not available
   server: {
     port: 1420,
     strictPort: true,
@@ -24,7 +32,6 @@ export default defineConfig(() => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
   },

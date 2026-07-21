@@ -1,160 +1,134 @@
 <script setup>
-import { ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { ref, onMounted } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
+import zhCn from "element-plus/es/locale/lang/zh-cn";
+import { useSettingsStore } from "./stores/settings";
+import { pickDatabaseFile, switchDatabase } from "./api/settings";
+import { errorMessage } from "./utils/error";
+import MainView from "./views/MainView.vue";
+import SettingsDialog from "./components/SettingsDialog.vue";
+import { EditPen, Setting } from "@element-plus/icons-vue";
 
-const greetMsg = ref("");
-const name = ref("");
+const settingsStore = useSettingsStore();
 
-async function greet() {
-  // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-  greetMsg.value = await invoke("greet", { name: name.value });
+const settingsDialogVisible = ref(false);
+const mainViewRef = ref(null);
+
+// Element Plus 中文本地化（自定义 pagination goto 文案）
+const customLocale = {
+  ...zhCn,
+  el: {
+    ...zhCn.el,
+    pagination: {
+      ...zhCn.el.pagination,
+      goto: "跳转到",
+    },
+  },
+};
+
+onMounted(async () => {
+  try {
+    await settingsStore.init();
+    if (settingsStore.dbMissing) {
+      // 非首次启动但数据库文件不存在，提示用户选择处理方式
+      await promptMissingDb();
+    } else if (settingsStore.dbError) {
+      ElMessage.warning(
+        `数据库打开失败：${settingsStore.dbError}。请在设置中配置有效的数据库路径。`
+      );
+    }
+  } catch (e) {
+    ElMessage.error(`初始化失败：${e?.message || e}`);
+  }
+});
+
+// 数据库文件不存在时的处理：让用户选择已有文件或创建新库
+async function promptMissingDb() {
+  const path = settingsStore.settings?.db_path || "";
+  try {
+    await ElMessageBox.confirm(
+      `数据库文件 "${path}" 不存在，可能是路径错误或文件已被移动。\n请选择已有的数据库文件，或创建一个新的空数据库。`,
+      "数据库文件不存在",
+      {
+        confirmButtonText: "创建新库",
+        cancelButtonText: "选择文件",
+        type: "warning",
+        distinguishCancelAndClose: true,
+        closeOnClickModal: false,
+      }
+    );
+    // 用户点击"创建新库"：在原路径创建空库
+    await switchDatabase(path);
+    settingsStore.clearDbMissing();
+    ElMessage.success("已创建新数据库");
+  } catch (action) {
+    if (action === "cancel") {
+      // 用户点击"选择文件"
+      try {
+        const filePath = await pickDatabaseFile();
+        if (filePath) {
+          await switchDatabase(filePath);
+          settingsStore.clearDbMissing();
+          ElMessage.success("数据库已切换");
+        } else {
+          ElMessage.warning("未选择数据库文件，请在设置中配置");
+        }
+      } catch (e) {
+        ElMessage.error(`切换数据库失败：${errorMessage(e)}`);
+      }
+    } else {
+      // 用户关闭对话框
+      ElMessage.warning("请在设置中配置有效的数据库路径");
+    }
+  }
+}
+
+function openSettings() {
+  settingsDialogVisible.value = true;
+}
+
+// 设置保存后刷新右侧全部单词预览区域
+function onSettingsChanged() {
+  mainViewRef.value?.refreshWordTable();
 }
 </script>
 
 <template>
-  <main class="container">
-    <h1>Welcome to Tauri + Vue</h1>
+  <el-config-provider :locale="customLocale">
+    <div class="app-layout">
+      <header class="app-header">
+        <div class="title">
+          <el-icon :size="22" color="#409eff"><EditPen /></el-icon>
+          <span class="title-text">图形化数据库编辑工具</span>
+        </div>
+        <div class="actions">
+          <el-tooltip content="软件设置" placement="bottom">
+            <el-button circle @click="openSettings">
+              <el-icon><Setting /></el-icon>
+            </el-button>
+          </el-tooltip>
+        </div>
+      </header>
 
-    <div class="row">
-      <a href="https://vite.dev" target="_blank">
-        <img src="/vite.svg" class="logo vite" alt="Vite logo" />
-      </a>
-      <a href="https://tauri.app" target="_blank">
-        <img src="/tauri.svg" class="logo tauri" alt="Tauri logo" />
-      </a>
-      <a href="https://vuejs.org/" target="_blank">
-        <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-      </a>
+      <main class="app-main">
+        <el-skeleton v-if="!settingsStore.ready" :rows="6" animated />
+        <MainView v-else ref="mainViewRef" />
+      </main>
+
+      <SettingsDialog
+        v-model:visible="settingsDialogVisible"
+        @changed="onSettingsChanged"
+      />
     </div>
-    <p>Click on the Tauri, Vite, and Vue logos to learn more.</p>
-
-    <form class="row" @submit.prevent="greet">
-      <input id="greet-input" v-model="name" placeholder="Enter a name..." />
-      <button type="submit">Greet</button>
-    </form>
-    <p>{{ greetMsg }}</p>
-  </main>
+  </el-config-provider>
 </template>
 
 <style scoped>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #249b73);
-}
-
-</style>
-<style>
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-.container {
-  margin: 0;
-  padding-top: 10vh;
+.actions {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
+  gap: 8px;
 }
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
+.title-text {
+  color: #409eff;
 }
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
-}
-
-button {
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
-}
-
-input,
-button {
-  outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
-}
-
 </style>
