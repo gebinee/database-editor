@@ -1,14 +1,11 @@
 <script setup>
 import { reactive, ref, watch, computed } from "vue";
+import { pickDatabaseFile, pickFontFile, switchDatabase } from "../api/settings";
 import { useSettingsStore } from "../stores/settings";
-import {
-  pickDatabaseFile,
-  pickFontFile,
-  switchDatabase,
-} from "../api/settings";
 import { errorMessage } from "../utils/error";
+
 import { SettingsDialog as BaseSettingsDialog } from "@gebinee/components";
-import { Brush, Coin, EditPen, FolderOpened, Upload } from "@element-plus/icons-vue";
+import { EditPen } from "@element-plus/icons-vue";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -21,47 +18,41 @@ const switching = ref(false);
 
 const form = reactive({
   db_path: "",
-  font_size: 14,
-  word_font: "system-ui",
+  word_font: "gebinee",
   phonetic_font: "gebinee",
   ui_font: "system-ui",
+  ui_font_cn: "",
   theme: "auto",
   custom_fonts: [],
 });
 
-// 项目特有的 tab 定义（"关于"tab 由包内置）
-const tabs = [
-  { name: "database", label: "数据库", icon: Coin },
-  { name: "appearance", label: "外观", icon: Brush },
-];
-
-const fontOptions = computed(() => {
-  const builtin = [
-    { label: "系统字体", value: "system-ui" },
-    { label: "gebinee", value: "gebinee" },
-  ];
-  const custom = form.custom_fonts.map((f) => ({
-    label: `${f.name}`,
-    value: f.name,
-  }));
-  return [...builtin, ...custom];
+// 外观配置代理：组件库内置 AppearanceTab 通过 v-model:appearance 双向绑定
+const appearanceProxy = computed({
+  get: () => ({
+    word_font: form.word_font,
+    phonetic_font: form.phonetic_font,
+    ui_font: form.ui_font,
+    ui_font_cn: form.ui_font_cn,
+    theme: form.theme,
+  }),
+  set: (v) => Object.assign(form, v),
 });
 
-const themeOptions = [
-  { label: "浅色模式", value: "light" },
-  { label: "深色模式", value: "dark" },
-  { label: "跟随系统", value: "auto" },
-];
+// 数据库配置代理：组件库内置 DatabaseTab 通过 v-model:database 双向绑定
+const databaseProxy = computed({
+  get: () => ({ db_path: form.db_path }),
+  set: (v) => Object.assign(form, v),
+});
+
+const fontOptions = computed(() =>
+  form.custom_fonts.map(f => ({ label: `${f.name}`, value: f.name }))
+);
 
 watch(
   () => props.visible,
   (v) => {
     if (v && settingsStore.settings) {
       Object.assign(form, settingsStore.settings);
-      // 兼容旧 dark_mode 字段
-      if (!form.theme) {
-        form.theme = form.dark_mode ? "dark" : "auto";
-      }
     }
   }
 );
@@ -119,100 +110,17 @@ async function onSave() {
   <BaseSettingsDialog
     :visible="visible"
     @update:visible="emit('update:visible', $event)"
-    :app-name="'图形化数据库编辑工具'"
+    v-model:appearance="appearanceProxy"
+    v-model:database="databaseProxy"
+    :font-options="fontOptions"
+    :show-database-tab="true"
+    :show-appearance-tab="true"
+    :show-update-button="true"
     :app-icon="EditPen"
-    :tabs="tabs"
+    app-name="gebinee 单词数据库编辑器"
     :saving="saving || switching"
     @save="onSave"
-  >
-    <!-- 数据库 tab：项目特有 -->
-    <template #tab-database>
-      <el-form :model="form" label-position="top">
-        <el-form-item label="数据库文件路径">
-          <div class="db-row">
-            <el-input v-model="form.db_path" placeholder="数据库文件路径" />
-            <el-button @click="onPickDb">
-              <el-icon><FolderOpened /></el-icon>
-              <span>选择</span>
-            </el-button>
-          </div>
-        </el-form-item>
-      </el-form>
-    </template>
-
-    <!-- 外观 tab：项目特有 -->
-    <template #tab-appearance>
-      <el-form :model="form" label-position="top">
-        <el-divider content-position="left">主题</el-divider>
-        <el-form-item label="主题模式">
-          <el-radio-group v-model="form.theme">
-            <el-radio-button
-              v-for="o in themeOptions"
-              :key="o.value"
-              :value="o.value"
-            >
-              {{ o.label }}
-            </el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-
-        <el-divider content-position="left">字体</el-divider>
-        <el-form-item label="单词字体">
-          <el-select v-model="form.word_font" style="width: 100%">
-            <el-option
-              v-for="o in fontOptions"
-              :key="o.value"
-              :label="o.label"
-              :value="o.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="注音字体">
-          <el-select v-model="form.phonetic_font" style="width: 100%">
-            <el-option
-              v-for="o in fontOptions"
-              :key="o.value"
-              :label="o.label"
-              :value="o.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="UI 字体">
-          <el-select v-model="form.ui_font" style="width: 100%">
-            <el-option
-              v-for="o in fontOptions"
-              :key="o.value"
-              :label="o.label"
-              :value="o.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="onPickFontFile">
-            <el-icon><Upload /></el-icon>
-            <span>上传字体文件</span>
-          </el-button>
-          <span class="hint">支持 ttf/otf/woff/woff2</span>
-        </el-form-item>
-      </el-form>
-    </template>
-  </BaseSettingsDialog>
+    @pick-database-file="onPickDb"
+    @pick-font-file="onPickFontFile"
+  />
 </template>
-
-<style scoped>
-.db-row {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-}
-
-/*noinspection CssUnusedSymbol*/
-.db-row .el-input {
-  flex: 1;
-}
-.hint {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-  margin-left: 8px;
-}
-</style>

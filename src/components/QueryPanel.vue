@@ -9,6 +9,7 @@ import {
 } from "../utils/validation";
 import { errorMessage } from "../utils/error";
 import EditDialog from "./EditDialog.vue";
+import { GebineeButton, GebineeInput } from "@gebinee/components";
 import { Close, Delete, Edit, Search } from "@element-plus/icons-vue";
 
 const emit = defineEmits(["changed"]);
@@ -90,23 +91,23 @@ function onEditChanged() {
     <div class="panel-title">查询单词</div>
     <el-form :model="form" label-position="top" @submit.prevent="onQuery">
       <el-form-item class="compact-item">
-        <el-input
+        <GebineeInput
           v-model="form.key"
           placeholder="输入完整单词查询"
-          class="font-word input-lg"
+          class="word-input"
           clearable
           @keyup.enter="onQuery"
         />
       </el-form-item>
       <div class="query-actions">
-        <el-button type="primary" class="btn-side" :loading="loading" @click="onQuery">
+        <GebineeButton type="primary" :loading="loading" @click="onQuery">
           <el-icon><Search /></el-icon>
           <span>查询</span>
-        </el-button>
-        <el-button type="warning" plain class="btn-side" @click="onClear">
+        </GebineeButton>
+        <GebineeButton type="warning" plain @click="onClear">
           <el-icon><Close /></el-icon>
           <span>清除</span>
-        </el-button>
+        </GebineeButton>
       </div>
     </el-form>
 
@@ -114,21 +115,21 @@ function onEditChanged() {
       <template v-if="result">
         <div class="result-row">
           <span class="label">单词</span>
-          <span class="font-word result-value">{{ result.key }}</span>
+          <span class="result-value word-text">{{ result.key }}</span>
         </div>
         <div class="result-row">
           <span class="label">注音</span>
-          <span class="font-phonetic result-value">{{ result.value }}</span>
+          <span class="result-value phonetic-text">{{ result.value }}</span>
         </div>
         <div class="result-actions">
-          <el-button type="success" plain class="btn-side btn-success-hover" @click="openEdit">
+          <GebineeButton type="success" plain @click="openEdit">
             <el-icon><Edit /></el-icon>
             <span>编辑</span>
-          </el-button>
-          <el-button type="danger" plain class="btn-side" @click="onDeleteResult">
+          </GebineeButton>
+          <GebineeButton type="danger" plain @click="onDeleteResult">
             <el-icon><Delete /></el-icon>
             <span>删除</span>
-          </el-button>
+          </GebineeButton>
         </div>
       </template>
       <el-empty v-else description="未找到该单词" :image-size="48" class="empty-tip" />
@@ -187,9 +188,6 @@ function onEditChanged() {
   gap: 8px;
   margin-top: 16px;
 }
-:deep(.btn-side) {
-  height: 38px;
-}
 :deep(.compact-item) {
   margin-bottom: 10px;
 }
@@ -203,5 +201,16 @@ function onEditChanged() {
 /*noinspection CssUnusedSymbol*/
 :deep(.result-card .el-card__body) {
   padding: 10px 12px;
+}
+
+/*noinspection CssUnusedSymbol*/
+:deep(.word-input .el-input__inner) {
+  font-family: var(--gebinee-word-font), sans-serif;
+}
+.word-text {
+  font-family: var(--gebinee-word-font), sans-serif;
+}
+.phonetic-text {
+  font-family: var(--gebinee-phonetic-font), sans-serif;
 }
 </style>

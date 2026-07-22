@@ -2,8 +2,7 @@
 const MESSAGES = {
   WordAlreadyExists: "单词已存在",
   WordNotExists: "单词不存在",
-  EmptyText: "文本不能为空",
-  InvalidText: "文本含有非法字符",
+  InvalidKey: "单词只能包含英文字母和连字符",
   DbError: "数据库错误",
   DbNotOpen: "数据库未打开",
   IoError: "IO错误",

@@ -23,5 +23,3 @@ export const importEntries = (items) => invoke("import_entries", { items });
 
 export const exportProblemWords = (items, path) =>
   invoke("export_problem_words", { items, path });
-
-export const getStats = () => invoke("get_stats");

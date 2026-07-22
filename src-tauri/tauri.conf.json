@@ -18,6 +18,17 @@
         "height": 800,
         "minWidth": 1240,
         "minHeight": 775
+      },
+      {
+        "label": "import",
+        "title": "从 Excel 导入",
+        "url": "import.html",
+        "width": 1100,
+        "height": 700,
+        "minWidth": 800,
+        "minHeight": 500,
+        "visible": false,
+        "center": true
       }
     ],
     "security": {

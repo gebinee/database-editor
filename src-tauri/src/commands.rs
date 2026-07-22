@@ -23,6 +23,8 @@ pub struct AppState {
     pub settings: Mutex<Settings>,
     /// 应用数据目录
     pub app_data_dir: PathBuf,
+    /// 待导入文件路径（导入窗口打开后读取并清除）
+    pub pending_import_path: Mutex<Option<String>>,
 }
 
 /// 启动时返回的初始化信息
@@ -125,15 +127,24 @@ pub fn get_settings(state: tauri::State<'_, AppState>) -> AppResult<Settings> {
         .clone())
 }
 
-/// 保存设置（同时持久化到磁盘）
+/// 保存设置（同时持久化到磁盘，并通知导入窗口同步更新）
 #[tauri::command]
-pub fn save_settings(state: tauri::State<'_, AppState>, settings: Settings) -> AppResult<()> {
+pub fn save_settings(
+    app: AppHandle,
+    state: tauri::State<'_, AppState>,
+    settings: Settings,
+) -> AppResult<()> {
     settings::save_settings(&state.app_data_dir, &settings)?;
-    let mut s = state
-        .settings
-        .lock()
-        .map_err(|_| AppError::Other("设置锁损坏".to_string()))?;
-    *s = settings;
+    {
+        let mut s = state
+            .settings
+            .lock()
+            .map_err(|_| AppError::Other("设置锁损坏".to_string()))?;
+        *s = settings;
+    }
+    // 通知导入窗口设置已变更，需重新应用主题/字体
+    use tauri::Emitter;
+    let _ = app.emit("settings:changed", ());
     Ok(())
 }
 
@@ -335,14 +346,52 @@ pub fn import_entries(
     with_conn(&state, |conn| db::import_entries(conn, items))
 }
 
+/// 打开导入窗口，将文件路径存入状态供前端读取
+#[tauri::command]
+pub fn open_import_window(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    file_path: String,
+) -> Result<(), String> {
+    use tauri::Emitter;
+    use tauri::Manager;
+
+    // 将路径存入状态，待导入窗口加载后读取
+    {
+        let mut path = state
+            .pending_import_path
+            .lock()
+            .map_err(|_| "状态锁损坏".to_string())?;
+        *path = Some(file_path.clone());
+    }
+
+    // 窗口在 tauri.conf.json 中预配置（visible: false），永不销毁
+    // 用户关闭窗口时会被拦截，改为隐藏（见 lib.rs 的 on_window_event）
+    // 这里只需显示窗口并发送事件通知前端有新路径
+    if let Some(win) = app.get_webview_window("import") {
+        win.show().map_err(|e| e.to_string())?;
+        win.set_focus().map_err(|e| e.to_string())?;
+        app.emit("import:open", &file_path).map_err(|e| e.to_string())?;
+    } else {
+        return Err("导入窗口未找到".to_string());
+    }
+    Ok(())
+}
+
+/// 读取并清除待导入文件路径
+#[tauri::command]
+pub fn take_pending_import_path(
+    state: tauri::State<'_, AppState>,
+) -> Result<Option<String>, String> {
+    let mut path = state
+        .pending_import_path
+        .lock()
+        .map_err(|_| "状态锁损坏".to_string())?;
+    Ok(path.take())
+}
+
 /// 导出问题项为 Excel
 #[tauri::command]
 pub fn export_problem_words(items: Vec<ProblemEntry>, path: String) -> AppResult<()> {
     excel::export_problem_words(items, path)
-}
-
-/// 统计信息
-#[tauri::command]
-pub fn get_stats(state: tauri::State<'_, AppState>) -> AppResult<Stats> {
-    with_conn(&state, |conn| db::get_stats(conn))
 }

@@ -17,6 +17,29 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
+        .on_window_event(|window, event| {
+            use tauri::Manager;
+            match window.label() {
+                "main" => {
+                    // 主窗口关闭时，强制销毁导入窗口（用 destroy 而非 close，
+                    // 因为 close 会被 import 窗口的 CloseRequested 拦截改为 hide）
+                    if let tauri::WindowEvent::CloseRequested { .. } = event {
+                        if let Some(import_win) = window.app_handle().get_webview_window("import") {
+                            let _ = import_win.destroy();
+                        }
+                    }
+                }
+                "import" => {
+                    // 导入窗口关闭时，拦截关闭请求，改为隐藏
+                    // 避免窗口被销毁后动态重建出现白屏问题
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        let _ = window.hide();
+                    }
+                }
+                _ => {}
+            }
+        })
         .setup(|app| {
             use std::path::Path;
 
@@ -60,6 +83,7 @@ pub fn run() {
                 db_missing: Mutex::new(db_missing),
                 settings: Mutex::new(settings),
                 app_data_dir,
+                pending_import_path: Mutex::new(None),
             });
 
             // 注册更新器插件（仅桌面端）
@@ -87,7 +111,8 @@ pub fn run() {
             commands::check_duplicates,
             commands::import_entries,
             commands::export_problem_words,
-            commands::get_stats,
+            commands::open_import_window,
+            commands::take_pending_import_path,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

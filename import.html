@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>从 Excel 导入</title>
+    <style>
+      /* 全局 reset：与主窗口保持一致，确保 height: 100vh 生效 */
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body,
+      #app {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      /* UI 字体引用 --gebinee-ui-font 变量，由 applyAppearance 设置 */
+      body {
+        font-family: var(--gebinee-ui-font, system-ui), sans-serif;
+      }
+      #loading-fallback {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #666;
+        font-family: system-ui, sans-serif;
+      }
+      #error-fallback {
+        position: fixed;
+        inset: 0;
+        padding: 32px;
+        font-size: 16px;
+        color: #f56c6c;
+        font-family: system-ui, monospace;
+        white-space: pre-wrap;
+        word-break: break-all;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="loading-fallback">正在加载导入窗口...</div>
+    </div>
+    <script>
+      // 捕获顶层错误，显示在页面上
+      window.addEventListener("error", function (e) {
+        var el = document.getElementById("error-fallback");
+        if (!el) {
+          el = document.createElement("div");
+          el.id = "error-fallback";
+          document.body.appendChild(el);
+        }
+        el.textContent = "JS Error: " + (e.error?.stack || e.message || JSON.stringify(e));
+      });
+      window.addEventListener("unhandledrejection", function (e) {
+        var el = document.getElementById("error-fallback");
+        if (!el) {
+          el = document.createElement("div");
+          el.id = "error-fallback";
+          document.body.appendChild(el);
+        }
+        el.textContent = "Promise Error: " + (e.reason?.stack || e.reason?.message || String(e.reason));
+      });
+    </script>
+    <script type="module" src="/src/import-main.js"></script>
+  </body>
+</html>

@@ -1,7 +1,7 @@
 use rusqlite::{Connection, OpenFlags};
 
 use crate::error::{AppError, AppResult};
-use crate::models::{Entry, ImportResult, ListResult, ProblemEntry, Stats};
+use crate::models::{Entry, ImportResult, ListResult, ProblemEntry};
 
 /// 打开/创建数据库连接并初始化 schema
 pub fn open_connection(path: &str) -> AppResult<Connection> {
@@ -25,6 +25,11 @@ fn validate_sort_order(order: &str) -> &'static str {
     } else {
         "ASC"
     }
+}
+
+/// 校验单词 key 格式：仅允许英文字母和连字符
+fn validate_key(key: &str) -> bool {
+    !key.is_empty() && key.chars().all(|c| c.is_ascii_alphabetic() || c == '-')
 }
 
 /// 列出条目（分页 + 搜索 + 排序）
@@ -97,6 +102,9 @@ pub fn get_entry(conn: &Connection, key: &str) -> AppResult<Option<Entry>> {
 
 /// 添加条目
 pub fn add_entry(conn: &Connection, key: &str, value: &str) -> AppResult<()> {
+    if !validate_key(key) {
+        return Err(AppError::InvalidKey);
+    }
     match conn.execute(
         "INSERT INTO kv_store (key, value) VALUES (?1, ?2)",
         rusqlite::params![key, value],
@@ -126,6 +134,9 @@ pub fn update_entry_key(
     new_key: &str,
     value: &str,
 ) -> AppResult<()> {
+    if !validate_key(new_key) {
+        return Err(AppError::InvalidKey);
+    }
     let tx = conn.unchecked_transaction()?;
     // 检查旧 key 是否存在
     let exists: i64 =
@@ -163,23 +174,45 @@ pub fn delete_entry(conn: &Connection, key: &str) -> AppResult<()> {
     }
 }
 
-/// 批量导入（事务内逐条插入，UNIQUE 冲突计入 problems 而非中断）
+/// 批量导入（事务内逐条插入，UNIQUE 冲突或非法 key 计入 problems 而非中断）
+/// 相同 key+value 的行自动去重，只保留第一条
 pub fn import_entries(conn: &Connection, items: Vec<Entry>) -> AppResult<ImportResult> {
     let mut inserted: u32 = 0;
     let mut problems: Vec<ProblemEntry> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
     let tx = conn.unchecked_transaction()?;
     for item in items {
+        // 去重：相同 key+value 只处理一次
+        if !seen.insert((item.key.clone(), item.value.clone())) {
+            continue;
+        }
+        if !validate_key(&item.key) {
+            problems.push(ProblemEntry {
+                key: item.key,
+                value: item.value,
+                problem: "单词只能包含英文字母和连字符".to_string(),
+            });
+            continue;
+        }
         match tx.execute(
             "INSERT INTO kv_store (key, value) VALUES (?1, ?2)",
             rusqlite::params![item.key, item.value],
         ) {
             Ok(_) => inserted += 1,
-            Err(_) => {
-                // 判断是约束冲突还是其它错误
+            Err(e) => {
+                let problem = if let rusqlite::Error::SqliteFailure(ref err, _) = e {
+                    if err.code == rusqlite::ErrorCode::ConstraintViolation {
+                        "单词已存在".to_string()
+                    } else {
+                        format!("数据库错误：{}", e)
+                    }
+                } else {
+                    format!("数据库错误：{}", e)
+                };
                 problems.push(ProblemEntry {
                     key: item.key,
                     value: item.value,
-                    problem: "单词已存在".to_string(),
+                    problem,
                 });
             }
         }
@@ -193,16 +226,11 @@ pub fn check_duplicates(conn: &Connection, keys: Vec<String>) -> AppResult<Vec<b
     let mut stmt = conn.prepare("SELECT 1 FROM kv_store WHERE key = ?1")?;
     let mut result = Vec::with_capacity(keys.len());
     for key in &keys {
-        let exists: bool = stmt
-            .exists(rusqlite::params![key])
-            .unwrap_or(false);
+        let exists = match stmt.exists(rusqlite::params![key]) {
+            Ok(v) => v,
+            Err(_) => false,
+        };
         result.push(exists);
     }
     Ok(result)
-}
-
-/// 统计信息
-pub fn get_stats(conn: &Connection) -> AppResult<Stats> {
-    let total_count: u64 = conn.query_row("SELECT COUNT(*) FROM kv_store", [], |row| row.get::<_, i64>(0))? as u64;
-    Ok(Stats { total_count })
 }

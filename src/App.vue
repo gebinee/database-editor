@@ -95,11 +95,11 @@ function onSettingsChanged() {
 
 <template>
   <el-config-provider :locale="customLocale">
-    <div class="app-layout">
-      <header class="app-header">
+    <div class="gebinee--app-layout">
+      <header class="gebinee--app-header">
         <div class="title">
-          <el-icon :size="22" color="#409eff"><EditPen /></el-icon>
-          <span class="title-text">图形化数据库编辑工具</span>
+          <el-icon :size="22" color="var(--el-color-primary)"><EditPen /></el-icon>
+          <span class="title-text">gebinee 单词数据库编辑器</span>
         </div>
         <div class="actions">
           <el-tooltip content="软件设置" placement="bottom">
@@ -110,7 +110,7 @@ function onSettingsChanged() {
         </div>
       </header>
 
-      <main class="app-main">
+      <main class="gebinee--app-main">
         <el-skeleton v-if="!settingsStore.ready" :rows="6" animated />
         <MainView v-else ref="mainViewRef" />
       </main>
@@ -123,12 +123,31 @@ function onSettingsChanged() {
   </el-config-provider>
 </template>
 
+<style>
+/* 全局 reset：组件库不再提供，消费项目自行声明 */
+* {
+  box-sizing: border-box;
+}
+/*noinspection CssUnusedSymbol*/
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--gebinee-ui-font), sans-serif;
+}
+</style>
+
 <style scoped>
 .actions {
   display: flex;
   gap: 8px;
 }
 .title-text {
-  color: #409eff;
+  color: var(--el-color-primary);
 }
 </style>

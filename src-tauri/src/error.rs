@@ -8,10 +8,8 @@ pub enum AppError {
     WordAlreadyExists,
     /// 单词不存在
     WordNotExists,
-    /// 文本为空
-    EmptyText,
-    /// 文本非法
-    InvalidText,
+    /// 单词格式非法（仅允许英文字母和连字符）
+    InvalidKey,
     /// 数据库错误
     DbError(String),
     /// 数据库未打开（路径错误等）
@@ -59,8 +57,7 @@ impl AppError {
         match self {
             AppError::WordAlreadyExists => "单词已存在".to_string(),
             AppError::WordNotExists => "单词不存在".to_string(),
-            AppError::EmptyText => "文本不能为空".to_string(),
-            AppError::InvalidText => "文本含有非法字符".to_string(),
+            AppError::InvalidKey => "单词只能包含英文字母和连字符".to_string(),
             AppError::DbError(m) => format!("数据库错误：{}", m),
             AppError::DbNotOpen(m) => format!("数据库未打开：{}", m),
             AppError::IoError(m) => format!("IO错误：{}", m),

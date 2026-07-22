@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import * as settingsApi from "../api/settings";
-import { applySettings, registerCustomFont } from "../utils/font";
+import { applyAppearance, registerCustomFonts } from "@gebinee/components";
 
 export const useSettingsStore = defineStore("settings", () => {
   const settings = ref(null);
@@ -15,15 +15,9 @@ export const useSettingsStore = defineStore("settings", () => {
     dbError.value = info.db_error || null;
     dbMissing.value = !!info.db_missing;
     if (settings.value && settings.value.custom_fonts) {
-      for (const f of settings.value.custom_fonts) {
-        try {
-          await registerCustomFont(f);
-        } catch (e) {
-          console.error("注册字体失败:", f.name, e);
-        }
-      }
+      await registerCustomFonts(settings.value.custom_fonts);
     }
-    applySettings(settings.value);
+    applyAppearance(settings.value);
     ready.value = true;
   }
 
@@ -31,24 +25,14 @@ export const useSettingsStore = defineStore("settings", () => {
     await settingsApi.saveSettings(newSettings);
     settings.value = newSettings;
     if (newSettings.custom_fonts) {
-      for (const f of newSettings.custom_fonts) {
-        try {
-          await registerCustomFont(f);
-        } catch (e) {
-          console.error("注册字体失败:", f.name, e);
-        }
-      }
+      await registerCustomFonts(newSettings.custom_fonts);
     }
-    applySettings(newSettings);
-  }
-
-  function clearDbError() {
-    dbError.value = null;
+    applyAppearance(newSettings);
   }
 
   function clearDbMissing() {
     dbMissing.value = false;
   }
 
-  return { settings, dbError, dbMissing, ready, init, save, clearDbError, clearDbMissing };
+  return { settings, dbError, dbMissing, ready, init, save, clearDbMissing };
 });

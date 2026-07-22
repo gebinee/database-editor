@@ -30,12 +30,6 @@ pub struct ImportResult {
     pub problems: Vec<ProblemEntry>,
 }
 
-/// 统计信息
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Stats {
-    pub total_count: u64,
-}
-
 /// 分页列表结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListResult {
@@ -63,6 +57,9 @@ pub struct Settings {
     pub phonetic_font: String,
     /// UI 西文字体
     pub ui_font: String,
+    /// UI 中文字体（空字符串表示不设置，跟随西文字体）
+    #[serde(default)]
+    pub ui_font_cn: String,
     /// 主题模式: "light" | "dark" | "auto"
     #[serde(default = "default_theme")]
     pub theme: String,
@@ -87,6 +84,7 @@ impl Default for Settings {
             word_font: "system-ui".to_string(),
             phonetic_font: "gebinee".to_string(), // 内置字体
             ui_font: "system-ui".to_string(),
+            ui_font_cn: String::new(),
             theme: "auto".to_string(),
             custom_fonts: Vec::new(),
         }

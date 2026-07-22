@@ -9,6 +9,7 @@ import {
   invalidKeyMsg,
 } from "../utils/validation";
 import { errorMessage } from "../utils/error";
+import { GebineeButton, GebineeInput } from "@gebinee/components";
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -78,31 +79,31 @@ async function onSave() {
     </template>
     <el-form :model="form" label-position="left" label-width="80px">
       <el-form-item label="单词" class="compact-item">
-        <el-input
+        <GebineeInput
           v-model="form.key"
           placeholder="单词（仅英文字母和连字符）"
-          class="font-word input-lg"
+          class="word-input"
           clearable
         />
       </el-form-item>
       <el-form-item label="注音结果" class="compact-item">
-        <el-input
+        <GebineeInput
           v-model="form.value"
           placeholder="注音结果"
-          class="font-phonetic input-lg"
+          class="phonetic-input"
           clearable
         />
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button class="btn-side" @click="emit('update:visible', false)">
+      <GebineeButton @click="emit('update:visible', false)">
         <el-icon><Close /></el-icon>
         <span>取消</span>
-      </el-button>
-      <el-button class="btn-green btn-side" :loading="saving" @click="onSave">
+      </GebineeButton>
+      <GebineeButton class="gebinee--btn-green" :loading="saving" @click="onSave">
         <el-icon><Check /></el-icon>
         <span>保存</span>
-      </el-button>
+      </GebineeButton>
     </template>
   </el-dialog>
 </template>
@@ -120,7 +121,14 @@ async function onSave() {
   font-size: 16px;
   line-height: 40px;
 }
-:deep(.btn-side) {
-  height: 38px;
+
+/*noinspection CssUnusedSymbol*/
+:deep(.word-input .el-input__inner) {
+  font-family: var(--gebinee-word-font), sans-serif;
+}
+
+/*noinspection CssUnusedSymbol*/
+:deep(.phonetic-input .el-input__inner) {
+  font-family: var(--gebinee-phonetic-font), sans-serif;
 }
 </style>

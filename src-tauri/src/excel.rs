@@ -4,7 +4,8 @@ use rust_xlsxwriter::Workbook;
 use crate::error::{AppError, AppResult};
 use crate::models::{ProblemEntry, RawRow};
 
-/// 读取 Excel 第一个工作表，前两列作为 (key, value)，返回原始行（不做校验）
+/// 读取 Excel 第一个工作表，前两列作为 (key, value)
+/// 相同 key+value 的行自动去重，仅保留第一条
 pub fn read_excel_for_import(path: String) -> AppResult<Vec<RawRow>> {
     let mut workbook =
         open_workbook_auto(&path).map_err(|e| AppError::ExcelError(e.to_string()))?;
@@ -13,10 +14,15 @@ pub fn read_excel_for_import(path: String) -> AppResult<Vec<RawRow>> {
         .ok_or_else(|| AppError::ExcelError("工作簿中没有工作表".to_string()))?
         .map_err(|e| AppError::ExcelError(e.to_string()))?;
 
+    let mut seen = std::collections::HashSet::new();
     let mut rows = Vec::new();
     for (i, row) in range.rows().enumerate() {
         let key = row.get(0).map(cell_to_string).unwrap_or_default();
         let value = row.get(1).map(cell_to_string).unwrap_or_default();
+        // 按 key+value 去重
+        if !seen.insert((key.clone(), value.clone())) {
+            continue;
+        }
         rows.push(RawRow {
             index: i as u32,
             key,

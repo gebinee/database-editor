@@ -1,9 +1,10 @@
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { listEntries, deleteEntry } from "../api/db";
 import { useQueryStore } from "../stores/query";
 import { errorMessage } from "../utils/error";
 import EditDialog from "./EditDialog.vue";
+import { GebineeButton, GebineeInput } from "@gebinee/components";
 import { Delete, Edit } from "@element-plus/icons-vue";
 
 const emit = defineEmits(["changed"]);
@@ -98,8 +99,6 @@ function onEditChanged() {
 
 onMounted(fetchData);
 
-watch(() => queryStore.sortOrder, fetchData);
-
 // 暴露刷新方法供父组件调用
 defineExpose({ refresh: fetchData });
 </script>
@@ -107,18 +106,18 @@ defineExpose({ refresh: fetchData });
 <template>
   <div class="word-table">
     <div class="toolbar">
-      <el-input
+      <GebineeInput
         v-model="queryStore.search"
         placeholder="搜索单词…"
         clearable
-        class="search-input font-word input-lg"
+        class="search-input word-input"
         @keyup.enter="onSearch"
         @clear="onSearch"
       />
       <div class="toolbar-actions">
-        <el-button type="primary" plain class="btn-tall" @click="onSearch">搜索</el-button>
-        <el-button type="warning" plain class="btn-tall" @click="onClear">清除</el-button>
-        <el-button class="btn-tall" @click="onRefresh">刷新</el-button>
+        <GebineeButton type="primary" plain @click="onSearch">搜索</GebineeButton>
+        <GebineeButton type="warning" plain @click="onClear">清除</GebineeButton>
+        <GebineeButton type="default" @click="onRefresh">刷新</GebineeButton>
       </div>
     </div>
 
@@ -140,7 +139,7 @@ defineExpose({ refresh: fetchData });
         header-align="center"
       >
         <template #default="{ row }">
-          <span class="font-word cell-text">{{ row.key }}</span>
+          <span class="cell-text word-text">{{ row.key }}</span>
         </template>
       </el-table-column>
       <el-table-column
@@ -152,13 +151,18 @@ defineExpose({ refresh: fetchData });
         show-overflow-tooltip
       >
         <template #default="{ row }">
-          <span class="font-phonetic cell-text">{{ row.value }}</span>
+          <span class="cell-text phonetic-text">{{ row.value }}</span>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="200" align="center" fixed="right">
         <template #default="{ row }">
           <div class="op-cell">
-            <el-button type="success" plain class="btn-cell btn-success-hover" @click="openEdit(row)">
+            <el-button
+              type="success"
+              plain
+              class="btn-cell gebinee--btn-success-hover"
+              @click="openEdit(row)"
+            >
               <el-icon><Edit /></el-icon>
               <span>编辑</span>
             </el-button>
@@ -228,9 +232,6 @@ defineExpose({ refresh: fetchData });
   display: flex;
   gap: 4px;
 }
-:deep(.btn-tall) {
-  height: 40px;
-}
 
 /*noinspection CssUnusedSymbol*/
 :deep(.el-table th.el-table__cell > .cell) {
@@ -282,5 +283,16 @@ defineExpose({ refresh: fetchData });
 /*noinspection CssUnusedSymbol*/
 :deep(.el-pagination__jump .el-input__inner) {
   font-size: 14px !important;
+}
+
+/*noinspection CssUnusedSymbol*/
+:deep(.word-input .el-input__inner) {
+  font-family: var(--gebinee-word-font), sans-serif;
+}
+.word-text {
+  font-family: var(--gebinee-word-font), sans-serif;
+}
+.phonetic-text {
+  font-family: var(--gebinee-phonetic-font), sans-serif;
 }
 </style>
