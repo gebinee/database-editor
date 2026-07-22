@@ -1,6 +1,6 @@
 [package]
 name = "gebinee-database-editor"
-version = "1.0.0"
+version = "1.1.0"
 license = "MIT"
 description = "gebinee 单词数据库编辑器"
 authors = ["Pueraria lobata <438707985@qq.com>"]
